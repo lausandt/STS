@@ -1,0 +1,301 @@
+/**
+ * 
+ */
+package search_trees_structures;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+
+import heaps_priority_queues.Entry;
+import list_abstractions.Position;
+import mapsHashSkip.AbstractSortedMap;
+
+/**
+ * This a Binary Search Tree based upon a binary tree and a map
+ * This is a reconstruction from the code of Goodrich Tammasia and Goldwasser
+ * The comments in this code are meant for me 
+ * The java doc is for the reader
+ * @author Lau Sandt
+ * https://github.com/lausandt/STS
+ */
+public class TreeMap<K, V> extends AbstractSortedMap<K,V> {
+	
+	protected BalanceableBinaryTree<K,V> tree = new BalanceableBinaryTree<>();
+	
+	// constructors
+	
+	/** constructs an empty map using AbstractSortedMap's default Comparator */
+	public TreeMap() {
+		super();
+		tree.addRoot(null); 			// creates a sentinal leaf as root 
+	}
+	
+	/** constructs an empty map with user defined comparator */
+	public TreeMap(Comparator<K> comp) {
+		super(comp);
+		tree.addRoot(null); 			// creates a sentinal leaf as root 
+	}
+	
+	
+	/** returns the number of entries in the map */
+	public int size() { return (tree.size() - 1) / 2; } // only internal nodes have entries
+	
+	// private utility
+	
+	/**  Stores entry e at the external position p, and expands p to be internal by adding two leaves as children */
+	private void expandExternal(Position<Entry<K,V>>p, Entry<K,V> entry) {
+		tree.set(p, entry);			// stores new entry at p
+		tree.addLeft(p, null);      // add new sentinal leaves as children
+		tree.addRight(p, null);
+	}
+	
+	// protected shorthand utilities allows us to wrap operations on the underlying linked binary tree 
+	
+	/** returns the root of this tree */
+	protected Position<Entry<K,V>> root() { return tree.root(); }
+	
+	/** returns the left child of position p */
+	protected Position<Entry<K,V>> left(Position<Entry<K,V>> p) { return tree.left(p); }
+	
+	/** returns the right child of position p */
+	protected Position<Entry<K,V>> right(Position<Entry<K,V>> p) { return tree.right(p); }
+	
+	/** returns the parent of position p */
+	protected Position<Entry<K,V>> parent(Position<Entry<K,V>> p){ return tree.parent(p); }
+	
+	/** returns true if p is a leaf */
+	protected boolean isExternal(Position<Entry<K,V>> p) { return tree.isExternal(p); }
+	
+	/** returns true if p is not a leaf */
+	protected boolean isInternal(Position<Entry<K,V>> p) { return tree.isInternal(p); }
+	
+	/** Replaces the entry at position p Returns the previously stored entry */
+	protected Entry<K,V> set(Position<Entry<K,V>> p, Entry<K,V> entry) { return tree.set(p, entry); }
+	
+	/** returns the other child of the parent of p */
+	protected Position<Entry<K,V>> sibling(Position<Entry<K,V>> p) {return tree.sibling(p); }
+	
+	/** Removes and returns the position p from the map*/
+	protected Entry<K,V> remove(Position<Entry<K,V>> p) { return tree.remove(p); }
+	
+	/** Tests if position p is the root of the TreeMap */
+	protected boolean isRoot(Position<Entry<K,V>> p) { return tree.isRoot(p); }
+	
+	
+	/** returns the position in p's subtree having given key (or else the terminal leaf) */
+	private Position<Entry<K,V>> treeSearch(Position<Entry<K,V>> p, K key){
+		if (isExternal(p)) return p;						// key not found sentinal returned
+		int comp = compare(key, p.getElement());
+		if (comp == 0) return p ;							// key found return position
+		if (comp < 0) return treeSearch(left(p), key);      // search left subtree
+		else return treeSearch(right(p), key);
+	}
+	
+
+	/** returns the value associated with key k or null */
+	public V get(K key) throws IllegalArgumentException  {
+		checkKey(key);										// checks the validity of the key, may throw exception
+		Position<Entry<K,V>> p = treeSearch(root(), key);
+		rebalanceAccess(p);
+		if (isExternal(p)) return null;						// search was unsuccesful
+		return p.getElement().getValue();					// search was succesful
+	}
+
+	private void rebalanceAccess(Position<Entry<K, V>> p) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public V put(K key, V value) throws IllegalArgumentException {
+		checkKey(key);
+		Entry<K,V> newEntry = new MapEntry<>(key, value);
+		Position<Entry<K,V>> p = treeSearch(root(), key);
+		if(isExternal(p)) {
+			expandExternal(p, newEntry);
+			rebalanceInsert(p);
+			return null;
+		}
+		else {
+			V old = p.getElement().getValue();
+			tree.set(p, newEntry);
+			rebalanceAccess(p);
+			return old;
+		}
+	}
+
+	private void rebalanceInsert(Position<Entry<K, V>> p) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	/** Removes the entry having key k (if any) and returns its associated value */
+	public V remove(K key)  throws IllegalArgumentException {
+		checkKey(key);
+		Position<Entry<K,V>> p = treeSearch(root(), key);
+		if (isExternal(p)) {														// there is no entry to be removed (easy easy case) 
+			rebalanceAccess(p);
+			return null;
+		} 
+		else {
+			V old = p.getElement().getValue();										// get the return value (p's value)
+			if (isInternal(left(p)) && isInternal(right(p))) {						// if both of the children are internal
+				Position<Entry<K,V>> replacement = treeMax(left(p));				// replacement is the entry with the greatest key strictly less than p's key
+				set(p, replacement.getElement()); 									// set replacements entry as the entry of p 
+				p = replacement;                									// set replacement on the position of p 
+			}																		// easy case
+			Position<Entry<K,V>> leaf = (isExternal(left(p)) ? left(p) : right(p)); // which of p's children is external, set that to leaf
+			Position<Entry<K,V>> sib = sibling(leaf);								// the sibling of leaf (will be internal) is promoted to p's place 
+			remove(leaf);															// remove leaf (isExternal and no longer sentinel)
+			remove(p);																
+			rebalanceDelete(sib);
+			return old;
+		}
+	}
+	
+	private void rebalanceDelete(Position<Entry<K, V>> sib) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	/**
+	 * Returns the position with the maximum key in a subtree rooted in p 
+	 *           5
+	 *		   /   \
+	 *        /     \
+	 *       /       \
+	 *      2     	  8
+	 *     / \  	 /  \ 
+	 *    1   3 <-	7    9 
+	 *   /\  / \   /\   / \
+	 *  L  LL    LL  L L   L
+	 *  
+	 *  3 is the biggest number in the subtree rooted at 2
+	 */
+	private Position<Entry<K,V>> treeMax(Position<Entry<K,V>> p){
+		Position<Entry<K,V>> walk = p;
+		while(isInternal(walk))
+			walk = right(walk);
+		return parent(walk);
+	}
+	
+	
+	/**
+	 * Returns the position with the maximum key in a subtree rooted in p 
+	 * the smalles left child in the right subtree of p will be the left child that has a leaf as child itself
+	 *           5
+	 *		   /   \
+	 *        /     \
+	 *       /       \
+	 *      2     	  8
+	 *     / \  	 /  \ 
+	 *    1   3  ->	7    9 
+	 *   /\  / \   /\   / \
+	 *  L  LL    LL  L L   L
+	 *  
+	 *  7 is the smallest number in the subtree rooted at 8
+	 */
+	private Position<Entry<K,V>> treeMin(Position<Entry<K,V>> p){
+		Position<Entry<K,V>> walk = p;
+		while(isInternal(walk))
+			walk = left(walk);
+		return parent(walk);
+	}
+	
+
+	/** returns the first entry  */
+	public Entry<K, V> firstEntry() {
+		if (isEmpty()) return null;
+		return root().getElement(); 
+		}
+
+	/** returns the first entry having the greatest key or null if empty */
+	public Entry<K, V> lastEntry() { 
+		if (isEmpty()) return null;
+		return treeMax(root()).getElement(); }
+
+	/** Return the entry with the least key value bigger than or equal to the given key, null if no such entry exists */
+	public Entry<K, V> ceilingEntry(K key) throws IllegalArgumentException { 
+		checkKey(key);
+		Position<Entry<K,V>> p = treeSearch(root(), key);
+		if (isInternal(p)) return p.getElement(); 					// the least key value >= key is the one equal to key
+		while(!isRoot(p)) {											// starts with p being a leaf to p being the root
+			if (p== left(parent(p))) return parent(p).getElement(); // the parent has the smallest key bigger than p
+			else p = parent(p);
+		}	
+		return null;												
+		}
+	
+
+	/**  Return the entry with the biggest key value smaller than or equal to the given key, null if no such entry exists */
+	public Entry<K, V> floorEntry(K key) throws IllegalArgumentException {
+		checkKey(key);
+		Position<Entry<K,V>> p = treeSearch(root(), key);
+		if (isInternal(p)) return p.getElement();
+		while(!isRoot(p)) {
+			if (p == right(parent(p))) return parent(p).getElement(); 	// the parent has the lesser key
+			else p = parent(p);
+		}	
+		return null;
+	}
+
+	/** Return the entry with the greatest key value strictly smaller than the given key, null if no such entry exists */
+	public Entry<K, V> lowerEntry(K key) throws IllegalArgumentException {
+		checkKey(key);
+		Position<Entry<K,V>> p = treeSearch(root(), key);
+		if (isInternal(p) && isInternal(left(p)))	// the entry with the greatest key smaller then this key will be in the left subtree rooted at p
+			return treeMax(left(p)).getElement();
+		// at this point two options the search failed, or match with no left child 
+	    while (!isRoot(p))
+	    	if (p == right(parent(p)))                     // the key strictly smaller then p's key will be the parent if key is the right child
+	    		return parent(p).getElement();
+	    	else
+	    		p = parent(p);								// if key is the left child look at the parent
+		return null;
+	}
+
+	/** Return the entry with the smallest key value strictly greater than the given key, null if no such entry exists */
+	public Entry<K, V> higherEntry(K key) throws IllegalArgumentException {
+		checkKey(key);
+		Position<Entry<K,V>> p = treeSearch(root(), key);
+		if (isInternal(p) && isInternal(right(p)))			// the entry with the smallest key greater then this key will be in the right subtree rooted at p
+			return treeMin(right(p)).getElement();
+		// at this point two options the search failed, or match with no right child so we must look upwards for a match
+	    while (!isRoot(p))
+	    	if (p == left(parent(p)))                      // the smallest key strictly greater then p's key will be the parent if p is the left child
+	    		return parent(p).getElement();
+	    	else
+	    		p = parent(p);								// if key is the right child look at the parent
+		return null;
+	}
+	
+	/** returns an iterable collection of all key-values entries in the map */
+	public Iterable<Entry<K, V>> entrySet() {
+		ArrayList<Entry<K,V>> buffer = new ArrayList<>(); 	// the irateble collecion
+		for (Position<Entry<K,V>> p : tree.inOrder())  		// returns all the positions of the tree with an inorder traversal
+			if (isInternal(p)) buffer.add(p.getElement());	// only internal positions have entries
+		return buffer;
+	}
+
+	/** returns an iterable of entries with keys in range [fromKey..toKey)*/
+	public Iterable<Entry<K, V>> subMap(K fromKey, K toKey) {
+		ArrayList<Entry<K,V>> buffer = new ArrayList<>(); 
+		if (compare(fromKey, toKey) < 0)
+			subMapRecurse(fromKey, toKey, root(), buffer);
+		return buffer;
+	}
+    
+	// utility function 
+	private void subMapRecurse(K fromKey, K toKey, Position<Entry<K, V>> p, ArrayList<Entry<K, V>> buffer) {
+		if (isInternal(p)) 
+			if (compare(p.getElement(), fromKey) < 0) 				// key is not in the submap
+				subMapRecurse(fromKey,toKey, right(p), buffer);		// all possible relevant entries must be to the right of p
+			else {
+				subMapRecurse(fromKey,toKey, left(p), buffer);	    // first consider the left subtree of p 
+				if (compare(p.getElement(),  toKey) < 0)            // p's key is within the range
+					buffer.add(p.getElement());						// so we add it
+				    subMapRecurse(fromKey,toKey, right(p), buffer);	// check right tree
+			}		
+	}
+
+}
