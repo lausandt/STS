@@ -1,5 +1,6 @@
 /**
- * 
+ * The binary search itself ahs only a best performance of O(log n) 
+ * This BST is implemented with a balanceable tree and therefor is theta(logn)
  */
 package search_trees_structures;
 
