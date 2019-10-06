@@ -16,11 +16,11 @@ import trees.LinkedBinaryTree;
  * Notes on balancing search trees:
  * The primary operation is to rotate a child above it's parent
  * 
- *       y			  x
+ *           y		 x
  * 	   /   \        /   \
- *   x      C <->  A     y
- *  /  \                / \ 
- * A	B              B   C 
+ *        x      C <->  A     y
+ *       /  \                / \ 
+ *     A     B              B   C 
  * 
  * Given  x < B < y both trees are equally valid 
  * This is done in O(1)
@@ -56,8 +56,8 @@ import trees.LinkedBinaryTree;
  * T3 <- left(c)
  * T4 <- right(c)
  * 
- * 			  b=x
- *  		  / \
+ * 	      b=x
+ *  	      / \
  *         a=z   c=y
  *        /  \   /  \
  *       T1  T2 T3   T4 
