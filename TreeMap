@@ -1,6 +1,5 @@
 /**
- * The binary search itself ahs only a best performance of O(log n) 
- * This BST is implemented with a balanceable tree and therefor is theta(logn)
+ * 
  */
 package search_trees_structures;
 
@@ -10,16 +9,134 @@ import java.util.Comparator;
 import heaps_priority_queues.Entry;
 import list_abstractions.Position;
 import mapsHashSkip.AbstractSortedMap;
+import trees.LinkedBinaryTree;
+
 
 /**
- * This a Binary Search Tree based upon a binary tree and a map
- * This is a reconstruction from the code of Goodrich Tammasia and Goldwasser
- * The comments in this code are meant for me 
- * The java doc is for the reader
+ * Notes on balancing search trees:
+ * The primary operation is to rotate a child above it's parent
+ * 
+ *       y			  x
+ * 	   /   \        /   \
+ *   x      C <->  A     y
+ *  /  \                / \ 
+ * A	B              B   C 
+ * 
+ * Given  x < B < y both trees are equally valid 
+ * This is done in O(1)
+ * 
+ * One or more rotations combined can provide a broader rebalancing of the tree 
+ * Trinode restucturing is an example of this, see pseudo code
+ * https://github.com/lausandt/STS/blob/master/restructurePseudo
+ * 
+ *        z
+ *      /   \
+ *     /     \
+ *    T1      y
+ *           / \
+ *          x   T4
+ *         /  \
+ *        T2   T3 
+ * 
+ * Inorder traversal results in 
+ * z = a 
+ * x = b 
+ * y = c 
+ * 
+ * replace the subtree at z with a new subtree rooted at b
+ * a <- left(b)
+ * c <- right(b)
+ * 
+ *   b=x
+ *   / \
+ * a=z c=y
+ * 
+ * T1 <- left(a)
+ * T2 <- left(b) 
+ * T3 <- left(c)
+ * T4 <- right(c)
+ * 
+ * 			  b=x
+ *  		  / \
+ *         a=z   c=y
+ *        /  \   /  \
+ *       T1  T2 T3   T4 
+ *       
+ * which can also be achieved by rotating x and y followed by x and z 
+ * 
  * @author Lau Sandt
  * https://github.com/lausandt/STS
  */
 public class TreeMap<K, V> extends AbstractSortedMap<K,V> {
+	
+	//-------------- nested BalanceableBinaryTree class --------------
+	protected static class BalanceableBinaryTree<K,V> extends LinkedBinaryTree<Entry<K,V>> {
+		
+		//-------------- nested BSTNode class --------------
+		protected static class BSTNode<E> extends Node<E> {
+			
+			int aux = 0;
+
+			public BSTNode(E element, Node<E> parent, Node<E> leftChild, Node<E> rightChild) {
+				super(element, parent, leftChild, rightChild);
+				}
+			
+			public int getAux() { return aux; }
+			public void setAux(int value) { aux = value; }
+		} //-------------- end nested BSTNode class -----------
+		
+		// positional based methods related to the aux field
+		public int getAux(Position<Entry<K,V>> p) { return ((BSTNode<Entry<K,V>>)p).getAux(); }
+		
+		public void setAux(Position<Entry<K,V>> p, int value) { ((BSTNode<Entry<K,V>>)p).setAux(value); }
+		
+		// Override node factory function to produce a BSTNode
+		protected Node<Entry<K,V>> createNode(Entry<K,V> element, Node<Entry<K,V>> parent, Node<Entry<K,V>> leftChild, Node<Entry<K,V>> rightChild){
+			return new BSTNode<>(element, parent, leftChild, rightChild);
+		}
+		
+		/** Relinks a parent node with its oriented node */
+		private void relink(Node<Entry<K,V>> parent, Node<Entry<K,V>> child, boolean makeLeftChild) {
+			child.setParent(parent);
+			if (makeLeftChild) parent.setLeft(child);
+			else parent.setRight(child);
+		}
+		
+		/** rotates Position p above its parent. */
+		public void rotate(Position<Entry<K,V>> p) {
+			Node<Entry<K,V>> x = validate(p);			// linkedBinaryTree.validate takes a position returns a node
+			Node<Entry<K,V>> y = x.getParent();
+			Node<Entry<K,V>> z = y.getParent();			// might be null in which case y is the root
+			if (z == null) { 							// replace y as root
+				root = x;
+			    x.setParent(null);
+			}
+			else 
+				relink(z, x, y==z.getLeft());          	// make x the left | right child of z depending on y  
+			if (x == y.getLeft()) {                     // if x is the left child of y (smaller than y) 
+				relink(y,x.getRight(), true);			// x's right child becomes y's left child
+				relink(x,y,false);						// y becomes x's right child
+			} else {
+				relink(y, x.getLeft(), false);			// x's leftchild becomes y's right child
+				relink(x,y,true);						// y becomes x's left child
+			}	
+		}
+		
+		public Position<Entry<K,V>> restructure(Position<Entry<K,V>> x) {
+			Position<Entry<K,V>> y = parent(x);
+			Position<Entry<K,V>> z = parent(y);
+			if ((x==right(y)) == (y==right(z))) { 	// this will evaluate to false == false -> true if both children are left children 
+				rotate(y);							// allignment requires a single rotation
+				return y;
+			}
+			else {									// non allignment requires a double rotation
+				rotate(x);
+				rotate(x);
+				return x;
+			}			
+		}
+
+	}//-------------- end nested BalanceableBinaryTree class -----------
 	
 	protected BalanceableBinaryTree<K,V> tree = new BalanceableBinaryTree<>();
 	
@@ -102,10 +219,7 @@ public class TreeMap<K, V> extends AbstractSortedMap<K,V> {
 		return p.getElement().getValue();					// search was succesful
 	}
 
-	private void rebalanceAccess(Position<Entry<K, V>> p) {
-		// TODO Auto-generated method stub
-		
-	}
+	protected void rebalanceAccess(Position<Entry<K, V>> p) { }
 
 	@Override
 	public V put(K key, V value) throws IllegalArgumentException {
@@ -125,10 +239,8 @@ public class TreeMap<K, V> extends AbstractSortedMap<K,V> {
 		}
 	}
 
-	private void rebalanceInsert(Position<Entry<K, V>> p) {
-		// TODO Auto-generated method stub
-		
-	}
+	protected void rebalanceInsert(Position<Entry<K, V>> p) { }
+	
 
 	/** Removes the entry having key k (if any) and returns its associated value */
 	public V remove(K key)  throws IllegalArgumentException {
@@ -154,10 +266,9 @@ public class TreeMap<K, V> extends AbstractSortedMap<K,V> {
 		}
 	}
 	
-	private void rebalanceDelete(Position<Entry<K, V>> sib) {
-		// TODO Auto-generated method stub
-		
-	}
+	
+	
+	protected void rebalanceDelete(Position<Entry<K, V>> p) { }
 
 	/**
 	 * Returns the position with the maximum key in a subtree rooted in p 
@@ -300,3 +411,4 @@ public class TreeMap<K, V> extends AbstractSortedMap<K,V> {
 	}
 
 }
+
