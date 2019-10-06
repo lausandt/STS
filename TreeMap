@@ -121,7 +121,7 @@ public class TreeMap<K, V> extends AbstractSortedMap<K,V> {
 				relink(x,y,true);						// y becomes x's left child
 			}	
 		}
-		
+		/** restructure uses rotate as it it's utility */
 		public Position<Entry<K,V>> restructure(Position<Entry<K,V>> x) {
 			Position<Entry<K,V>> y = parent(x);
 			Position<Entry<K,V>> z = parent(y);
