@@ -1,0 +1,17 @@
+Algorithm restructure(x):
+
+	Input: A position x of a binary search tree T that has both a parent y and a grandparent z
+	Output: Tree T after a trinode restructuring. (Single or double rotation) involving positions
+	        x, y, and z
+	        
+	a,b,c <- inorder listing of x,y,z
+	T1,T2,T3,T4 <- inorder listing of the subtrees of x,y,z not rooted at x,y,or z
+	Replace the subtree at z with a new subtree root at b
+	a  <- left(b) 
+	T1 <- left(a)
+	T2 <- left(b) 
+	c  <- right(b)
+	T3 <- left(c)
+	T4 <- right(c)
+	
+	
