@@ -6,7 +6,7 @@ Algorithm restructure(x):
 	        
 	a,b,c <- inorder listing of x,y,z
 	T1,T2,T3,T4 <- inorder listing of the subtrees of x,y,z not rooted at x,y,or z
-	Replace the subtree at z with a new subtree root at b
+	Replace the subtree at z with a new subtree rooted at b
 	a  <- left(b) 
 	T1 <- left(a)
 	T2 <- left(b) 
