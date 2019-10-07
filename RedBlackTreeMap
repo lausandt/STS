@@ -1,0 +1,136 @@
+/**
+ * 
+ */
+package search_trees_structures;
+
+import java.util.Comparator;
+
+import heaps_priority_queues.Entry;
+import list_abstractions.Position;
+
+/**
+ * A red-black tree is a binary search tree with nodes colored black and red in a manner that satisfies the following four properties
+ * 1 - Root property: The root is black
+ * 2 - External property: Every external node is black
+ * 3 - Red property: The children of a red node are black
+ * 4 - Depth property: All external nodes have the same black depth
+ * 
+ * definition black depth: The number of proper ancestors that are black
+ * 
+ * The height of a red-black tree is O(log n)
+ * The primary advantage of a red-balck tree over an AVL- or (2,4) trees are the both insertion and deletion operations are performed in O(1) (and some constant)
+ * 
+ * From every red-black tree we can make a (2,4) Tree 
+ * We merge every red node w with its parents storing the entry of w with its parent
+ * the children of w becoming ordered (in keys) children of its parent
+ * 
+ * Conversely we can transform any (2,4) Tree to a red-black tree 
+ * We color each node black and perform the following transformations
+ * 1 - If w is a 2-node (a parent with one or two children) then change nothing (both children will remain black)
+ * 2 - If w is a 3 node, then create a new red node y, give w's last two black children to y. Make a child of w (w has two children its original first and y)
+ * 3 - If w is a 4 node, then create two red nodes, y & z, give the first two children of w to y and the remaining two to z. Make y and z children of w
+ * 
+ * @author Lau Sandt
+ *
+ */
+public class RedBlackTreeMap<K, V> extends TreeMap<K,V> {
+	
+	/** constructs an empty map using the natural ordering of keys */
+	public RedBlackTreeMap() { super(); }
+	
+	/** constructs an empty map using given Comparator for the ordering of keys */
+	public RedBlackTreeMap(Comparator<K> comp) { super(comp); }
+	
+	// The inherited aux field of BSTNode provides the destinction between black=0 and red=1 new leaves are black by default
+	
+	/** Tests if a node is black */
+	private boolean isBlack(Position<Entry<K,V>> p) { return tree.getAux(p) == 0; }
+	
+	/** Tests if a node is red */
+	private boolean isRed(Position<Entry<K,V>> p) { return tree.getAux(p) == 1; }
+	
+	private void makeBlack(Position<Entry<K,V>> p) { tree.setAux(p, 0); }
+	
+	private void makeRed(Position<Entry<K,V>> p) { tree.setAux(p, 1); }
+	
+	private void setColor(Position<Entry<K,V>> p, boolean toRed) { tree.setAux(p, toRed ? 1 : 0); }
+	
+	/**
+	 * Overrides TreeMaps'rebalancing hook that is called after insertion
+	 * 1st step check if p isn't the root (property 1) 
+	 * 2nd step make the position red
+	 * 3rd step make sure that p doesn't lead to a double red (property 3) 
+	 */
+	protected void rebalanceInsert(Position<Entry<K,V>> p) {
+		if (!isRoot(p)) {
+			makeRed(p);
+			resolveRed(p);
+		}
+	}
+	
+	/** Remedies potential double red violation */
+	private void resolveRed(Position<Entry<K, V>> p) {
+		Position<Entry<K,V>> parent, uncle, middle, grand;
+		parent = parent(p);
+		if (isRed(parent)) { 					// double red problem exists
+			uncle = sibling(parent);
+			if (isBlack(uncle)) { 				// Case 1 misshapen 4 node 
+				middle = tree.restructure(p); 	// do trinode restucturing 
+				makeBlack(middle);
+				makeRed(left(middle));
+				makeRed(right(middle));
+			} else { 							// Case 2 overfull 5-node
+				makeBlack(parent);				// perform recolouring
+				makeBlack(uncle);
+				grand = parent(parent);
+				if (!isRoot(grand)) {
+					makeRed(grand);
+					resolveRed(grand); 			// propagate the problem (double red) upwards in the tree
+				}
+			}	
+		}	
+	}
+	
+	/** 
+	 * Overrides TreeMap's rebalancing hook that is called after deletion 
+	 * The object is to restore black depth for the tree
+	 */
+	protected void rebalanceDelete(Position<Entry<K,V>> p) {
+		if(isRed(p)) makeBlack(p); // deleted parent must have been black by property 3
+		else if (!isRoot(p)) {
+			Position<Entry<K,V>> sib = sibling(p);
+			if (isInternal(sib) && (isBlack(sib) || isInternal(left(sib)))) // the subtree rooted at sib has non zero black depth
+				remedyDoubleBlack(p);                                                                 
+		}
+	}
+	
+    /** Remedies the double black violation at the given non root position */
+	private void remedyDoubleBlack(Position<Entry<K, V>> p) {
+		Position<Entry<K,V>> parent = parent(p);
+		Position<Entry<K,V>> sibling = sibling(p);
+		if (isBlack(sibling)) {
+			if(isRed(left(sibling)) || isRed(right(sibling)) ) { 		// case 1 trinode restructuring
+				Position<Entry<K,V>> x = (isRed(left(sibling)) ? left(sibling) : right(sibling));
+				Position<Entry<K,V>> mid = tree.restructure(x);
+				setColor(mid, isRed(parent));
+				makeBlack(left(mid));
+				makeBlack(right(mid));	
+			} else {													// case 2: recoloring
+				makeRed(sibling);
+				if (isRed(parent)) makeBlack(parent);					// problem solved
+				else if (!isRoot(parent)) remedyDoubleBlack(parent);	// problem propagated higher up
+			}
+		}
+		else {															// Case 3 reorientate 3-node
+			tree.rotate(sibling);
+			makeBlack(sibling);
+			makeRed(parent);
+			remedyDoubleBlack(p);										// start again at p
+		}
+	}
+	
+	
+	
+	
+
+}
